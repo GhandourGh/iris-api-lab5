@@ -1,0 +1,25 @@
+# Part 2 helper: build and push the tagged images v1 and v2 to ACR (OIDC login, amd64 runner)
+name: push-images
+on:
+  workflow_dispatch:
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Build and push v1 and v2
+        run: |
+          az acr login --name "${{ vars.ACR_NAME }}"
+          for v in 1 2; do
+            docker build --build-arg APP_VERSION="${v}.0.0" -t "${{ vars.ACR_NAME }}.azurecr.io/iris-api:v${v}" .
+            docker push "${{ vars.ACR_NAME }}.azurecr.io/iris-api:v${v}"
+          done
+          az acr repository show-tags --name "${{ vars.ACR_NAME }}" --repository iris-api -o table
